@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: A sample template
+Resources:
+      
+    MySecurityGroup:
+       Type: AWS::EC2::Instance
+       Properties:
+          GroupDescription: Enable HTTP for Flask Web Server 
+          SecurityGroupIngress:
+            -   IpProtocol: tcp
+                FromPort: 80
+                CidrIp : 0.0.0.0/0
+                ToPort: 80
+            -   IpProtocol:
+                FromPort: 22
+                ToPort: 22
+                CidrIp: 0.0.0.0/0
+
+            
+            
+    MyWebServer:
+         Type: Resource Type  
+         Properties:
+            ImageId: ami-08f3d892de259504d
+            InstanceType: t2.micro
+            SecurityGroupIds:
+                - !Ref MySecurityGroup
+            Tags:
+                - 
+                   Key: Name 
+                   Value: !Sub Web Server of ${AWS::StackName} Stack 
+            UserData:
+                Fn::Base64: 
+                   !Sub | 
+                    #! /bin/bash
+                    yum update -y 
+                    yum install python3 
+                    pip3 install flask
+                    wget -P templates index.html 
+                    wget -P templates result.html
+                    wget app.py
+                    python3 app.py
+
+Outputs:
+     WebsiteURL:
+         Description: Roman Numerals Converter Application Website URL
+         Value: !Sub 
+             - http://${PublicAddress}
+             - PiblicAdress: !GetAtt MyWebServer.PublicDnsName
+
+      
