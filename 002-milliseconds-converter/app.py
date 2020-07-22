@@ -2,15 +2,12 @@ from flask import Flask, render_template, request
 
 app = Flask(__name__)
 
-def milsec_to_hour(milsec):
-    sec = milsec // 1000
-    sec, min = sec % 60, sec // 60
-    min, hour= min % 60, min // 60
-    result = f"{bool(hour) * str(hour)}{bool(hour) * ' hour/s '}\
-{bool(min) * str(min)}{bool(min) * ' minute/s '}\
-{bool(sec) * str(sec)}{bool(sec) * ' second/s'}"
-
-    return f'just {milsec} milisecond/s' if milsec < 1000 else result
+def milsec(mil):
+    sec = (mil // 1000)
+    min = (mil // (1000 * 60)) % 60
+    hr = (mil // (1000 * 60 * 60))
+    
+    return f'{sec} seconds {min} minutes {hr} hours'
 
 @app.route('/', methods=['GET'])
 def main_get():
@@ -18,9 +15,9 @@ def main_get():
 
 @app.route('/', methods=['POST'])
 def main_post():
-    milsec = request.form['number']
-    if milsec.isdecimal() and milsec != '0':
-       return render_template('result.html', developer_name='Fatma', milliseconds=milsec, result=milsec_to_hour(int(milsec)))
+    mil = request.form['number']
+    if mil.isdecimal() and mil != '0':
+       return render_template('result.html', developer_name='Fatma', milliseconds=mil, result=milsec(int(mil)))
     return render_template('index.html', developer_name='Fatma', not_valid=True)
 
 if __name__ == "__main__":

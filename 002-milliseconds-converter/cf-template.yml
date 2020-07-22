@@ -1,0 +1,51 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description:
+     This is cloudformation template for miliseconds application.
+
+Resources:
+    MySecurityGroup:
+      Type: AWS::EC2::SecurityGroup
+      Properties:
+        GroupDEscription: Enables HTTP for Flask Web Server 
+        GroupName: Flask-WS-SG 
+        SecurityGroupIngress: 
+            -  IpProtocol: String 
+               FromPort: 80
+               ToPort: 80
+               CidrIp: 0.0.0.0/0 
+            -  IpProtocol: tcp 
+               FromPort: 22 
+               ToPOrt: 22 
+               CidrIp: 0.0.0.0/0    
+           
+    MyWebServer:
+      Type: AWS::EC2::Instance 
+      Properties:
+        ImageId: ami-08f3d892de259504d 
+        InstanceType: t2.micro 
+        SecurityGroupIds: 
+            - !Ref MySEcurityGroup 
+        Tags:
+            - 
+               Key: Name 
+               Value: !Sub Web Server of ${AWS::StackName} Stack 
+        UserData: 
+            Fn::Base64: 
+               !Sub | 
+               #! /bin/bash 
+               yum update -y 
+               yum install python3 -y 
+               pip3 install flask 
+               wget -p index.html 
+               wget -p result.html 
+               wget app.py 
+               python3 app.py
+
+Outputs:
+    WebsiteURL:
+      Description: Miliseconds Converter Application Website URL
+      Value: !Sub 
+          - http://${PublicAddress} 
+          - PublicAddress: !GetAtt MyWebServer.PublicDnsName 
