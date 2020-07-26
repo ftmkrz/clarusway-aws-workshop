@@ -7,7 +7,7 @@ def milsec(mil):
     min = (mil // (1000 * 60)) % 60
     hr = (mil // (1000 * 60 * 60))
     
-    return f'{hr} hour/s ' * (hr != 0) + f'{min} minute/s ' * (min != 0) + f'{sec} second/s ' * (sec != 0)
+    return f'{hr} hour/s ' * (hr != 0) + f'{min} minute/s ' * (min != 0) + f'{sec} second/s ' * (sec != 0) or f'just {mil} milisecond/s'
 
 @app.route('/', methods=['GET'])
 def main_get():
