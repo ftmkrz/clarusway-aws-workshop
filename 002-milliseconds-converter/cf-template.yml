@@ -5,6 +5,36 @@ Description:
      This is cloudformation template for miliseconds application.
 
 Resources:
+    ApplicationLoadBalancer:
+      Type: AWS::ApplicationLoadBalancing::LoadBalancer 
+      Properties: 
+        Subnets: 
+          - !Ref VPCId 
+        SecurityGroup: 
+          - !REf MySecurityGroup 
+        Listeners: 
+          - LoadBalancerPort: 80 
+            InstancePort: 80 
+            Protocol: HTTP 
+        HealthCheck: 
+          Target: HTTP:80/ 
+          HealthyThreshold: 3 
+          UnhealthyThreshold: 5 
+          Interval: 90 
+          Timeout: 5 
+    MyAutoScalingGroup:
+      Type: AWS::AutoScaling::AutoScalingGroup 
+      Properties: 
+        AvailabilityZones: 
+          - !Ref VPCSubnets 
+        LaunchConfigurationName: LaunchTemplate 
+        MinSize: 1 
+        MaxSize: 3 
+        DesireCapacity: 2 
+        LoadBalancerNames:
+          - !Ref ApplicationLoadBalancer  
+        VPCZoneIdenrifier: 
+          - !Ref VPCPublicSubnetId
     MySecurityGroup:
       Type: AWS::EC2::SecurityGroup
       Properties:
@@ -14,19 +44,14 @@ Resources:
             -  IpProtocol: String 
                FromPort: 80
                ToPort: 80
-               CidrIp: 0.0.0.0/0 
-            -  IpProtocol: tcp 
-               FromPort: 22 
-               ToPOrt: 22 
-               CidrIp: 0.0.0.0/0    
-           
-    MyWebServer:
+               CidrIp: 0.0.0.0/0     
+    MyInstance:
       Type: AWS::EC2::Instance 
       Properties:
         ImageId: ami-08f3d892de259504d 
         InstanceType: t2.micro 
         SecurityGroupIds: 
-            - !Ref MySEcurityGroup 
+            - !Ref MySecurityGroup 
         Tags:
             - 
                Key: Name 
@@ -46,6 +71,4 @@ Resources:
 Outputs:
     WebsiteURL:
       Description: Miliseconds Converter Application Website URL
-      Value: !Sub 
-          - http://${PublicAddress} 
-          - PublicAddress: !GetAtt MyWebServer.PublicDnsName 
+      Value: !GetAtt ApplicationLoadBalancer.PublicDnsName 
