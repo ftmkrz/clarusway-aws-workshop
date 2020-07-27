@@ -1,84 +1,102 @@
----
-AWSTemplateFormatVersion: "2010-09-09"
-
-Description:
-     This is cloudformation template for miliseconds application.
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  Cloudformation temolate for miliseconds converter.
+  
 Resources:
-    ApplicationLoadBalancer:
-      Type: AWS::ApplicationLoadBalancing::LoadBalancer 
-      Properties:
-        VpcId: vpc-46003a3c 
-        Subnets: 
-          - subnet-6128c607 
-          - subnet-58ab5f79 
-          - subnet-5e5f6260 
-          - subnet-7bf14836 
-          - subnet-5a51ba05
-          - subnet-e72888e9
-        SecurityGroup: 
-          - !REf MySecurityGroup 
-        Listeners: 
-          - LoadBalancerPort: 80 
-            InstancePort: 80 
-            Protocol: HTTP 
-        HealthCheck: 
-          Target: HTTP:80/ 
-          HealthyThreshold: 3 
-          UnhealthyThreshold: 5 
-          Interval: 90 
-          Timeout: 5 
-    MyAutoScalingGroup:
-      Type: AWS::AutoScaling::AutoScalingGroup 
-      Properties: 
-        AvailabilityZones: 
-          - !Ref |
-            - subnet-6128c607
-            - subnet-58ab5f79
-            - subnet-5e5f6260
-            - subnet-7bf14836
-            - subnet-5a51ba05
-            - subnet-e72888e9
-        LaunchConfigurationName: LaunchTemplate 
-        MinSize: 1 
-        MaxSize: 3 
-        DesireCapacity: 2 
-        LoadBalancerNames:
-          - !Ref ApplicationLoadBalancer  
-    MySecurityGroup:
-      Type: AWS::EC2::SecurityGroup
-      Properties:
-        GroupDEscription: Enables HTTP for Flask Web Server 
-        GroupName: Flask-WS-SG 
-        VpcId: vpc-46003a3c
-        SecurityGroupIngress: 
-            -  IpProtocol: tcp
-               FromPort: 80
-               ToPort: 80
-               CidrIp: 0.0.0.0/0     
-    MyInstance:
-      Type: AWS::EC2::Instance 
-      Properties:
+  ALBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable HTTP for ALB
+      SecurityGroupIngress:
+        - IPProtocol: tcp 
+          FromPort: 80 
+          ToPort: 80 
+          CidrIp: 0.0.0.0/0 
+  WebServerSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: Enable HTTP for App only from ALB
+      SecurityGroupIngress:
+        - IpProtocol: tcp 
+          FromPort: 80 
+          ToPort: 80 
+          SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId 
+        - IpProtocol: tcp 
+          FromPort: 22 
+          ToPort: 22 
+          CidrIp: 0.0.0.0/0
+  WebServerLT:
+    Type: "AWS::EC2::LaunchTemplate"
+    Properties:
+      LaunchTemplateData:
         ImageId: ami-08f3d892de259504d 
         InstanceType: t2.micro 
-        SecurityGroupIds: 
-            - !Ref MySecurityGroup 
-        Tags:
-            - 
-               Key: Name 
-               Value: !Sub Web Server of ${AWS::StackName} Stack 
+        SecurityGroupIds:
+          - !GetAtt WebServerSecurityGroup.GroupId 
+        TagsSpecifications: 
+          - ResourceType: instance 
+            Tags: 
+              - Key: Name 
+                Value: !Sub Web Server of ${AWS::StackName} Stack 
         UserData: 
-            Fn::Base64: 
-               !Sub | 
-               #! /bin/bash 
-               yum update -y 
-               yum install python3 -y 
-               pip3 install flask 
-               wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/index.html 
-               wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/result.html
-               wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/app.py
-               python3 app.py
-
-Outputs:
-    WebsiteURL:
+          Fn::Base64: | 
+            #! /bin/bash 
+            yum update -y 
+            yum install python3 -y 
+            pip3 install flask 
+            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/index.html 
+            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/result.html
+            wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/app.py
+            python3 app.py  
+  WebServerTG:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      Port: 80 
+      Protocol: HTTP
+      TargetType: instance
+      VpcId: !GetAtt WebServerSecurityGroup.VpcId 
+  ApplicationLoadBalancer:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
+        - !GetAtt ALBSecurityGroup.GroupId
+      Subnets:
+        - subnet-6128c607 
+        - subnet-58ab5f79 
+        - subnet-5e5f6260 
+        - subnet-7bf14836 
+        - subnet-5a51ba05
+        - subnet-e72888e9
+      Type: application 
+  ALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      DefaultActions: 
+        - TargetGroupArn: !Ref WebServerTG
+          Type: forward
+      LoadBalancerArn: !Ref ApplicationLoadBalancer
+      Port: 80
+      Protocol: HTTP
+  WebServerASG:
+    Type: "AWS::AutoScaling::AutoScalingGroup"
+    Properties:
+      AvailabilityZones:
+        - !GetAZs "" 
+      DesiredCapacity: 2
+      HealthCheckGracePeriod: 90
+      HealthCheckType: ELB
+      LaunchTemplate:
+        LaunchTemplateId: !Ref WebServerLT 
+        Version: !GetAtt WebServerLT.LatestVersionNumber
+      MaxSize: 3
+      MinSize: 1
+      TargetGroupARNs:
+        - !Ref WebServerTG 
+Outputs: 
+   WebsiteURL:
       Description: Miliseconds Converter Application Website URL
-      Value: !GetAtt ApplicationLoadBalancer.PublicDnsName 
+      Value: !Sub
+        - http://${ALBaddress}
+        - ALBaddress: !GetAtt ApplicationLoadBalancer.DnsName 
