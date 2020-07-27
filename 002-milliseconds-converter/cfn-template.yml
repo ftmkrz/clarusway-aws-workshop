@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
-  Cloudformation temolate for miliseconds converter.
+  Cloudformation template for miliseconds converter.
   
 Resources:
   ALBSecurityGroup:
@@ -8,7 +8,7 @@ Resources:
     Properties:
       GroupDescription: Enable HTTP for ALB
       SecurityGroupIngress:
-        - IPProtocol: tcp 
+        - IpProtocol: tcp 
           FromPort: 80 
           ToPort: 80 
           CidrIp: 0.0.0.0/0 
@@ -99,4 +99,4 @@ Outputs:
       Description: Miliseconds Converter Application Website URL
       Value: !Sub
         - http://${ALBaddress}
-        - ALBaddress: !GetAtt ApplicationLoadBalancer.DnsName 
+        - ALBaddress: !GetAtt ApplicationLoadBalancer.DNSName 
