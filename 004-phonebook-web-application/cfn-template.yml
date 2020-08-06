@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
-  Cloudformation template for miliseconds converter.
+  Cloudformation template for phonebook application.
   
 Resources:
   ALBSecurityGroup:
@@ -44,9 +44,10 @@ Resources:
             yum update -y 
             yum install python3 -y 
             pip3 install flask 
-            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/index.html 
-            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/templates/result.html
-            wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/002-milliseconds-converter/app.py
+            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/index.html 
+            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/add-update.html
+            wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/delete.html
+            wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/app.py
             python3 app.py  
   WebServerTG:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
@@ -109,7 +110,7 @@ Resources:
     
 Outputs: 
    WebsiteURL:
-      Description: Miliseconds Converter Application Website URL
+      Description: Phonebook Application Website URL
       Value: !Sub
         - http://${ALBaddress}
         - ALBaddress: !GetAtt ApplicationLoadBalancer.DNSName 
