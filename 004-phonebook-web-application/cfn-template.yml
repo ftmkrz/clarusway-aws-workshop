@@ -1,61 +1,70 @@
 AWSTemplateFormatVersion: 2010-09-09
 Description: |
   Cloudformation template for phonebook application.
-  
+
 Resources:
   ALBSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription: Enable HTTP for ALB
       SecurityGroupIngress:
-        - IpProtocol: tcp 
-          FromPort: 80 
-          ToPort: 80 
-          CidrIp: 0.0.0.0/0 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
   WebServerSecurityGroup:
     Type: "AWS::EC2::SecurityGroup"
     Properties:
       GroupDescription: Enable HTTP for App only from ALB
       SecurityGroupIngress:
-        - IpProtocol: tcp 
-          FromPort: 80 
-          ToPort: 80 
-          SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId 
-        - IpProtocol: tcp 
-          FromPort: 22 
-          ToPort: 22 
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          SourceSecurityGroupId: !GetAtt ALBSecurityGroup.GroupId
+        - IpProtocol: tcp
+          FromPort: 22
+          ToPort: 22
           CidrIp: 0.0.0.0/0
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0      
   WebServerLT:
     Type: "AWS::EC2::LaunchTemplate"
     Properties:
       LaunchTemplateData:
-        ImageId: ami-08f3d892de259504d 
-        InstanceType: t2.micro 
+        ImageId: ami-08f3d892de259504d
+        InstanceType: t2.micro
         SecurityGroupIds:
-          - !GetAtt WebServerSecurityGroup.GroupId 
-        TagsSpecifications: 
-          - ResourceType: instance 
-            Tags: 
-              - Key: Name 
-                Value: !Sub Web Server of ${AWS::StackName} Stack 
-        UserData: 
-          Fn::Base64: | 
+          - !GetAtt WebServerSecurityGroup.GroupId
+        TagsSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub Web Server of ${AWS::StackName} Stack
+        UserData:
+          Fn::Base64: |
             #! /bin/bash 
             yum update -y 
             yum install python3 -y 
-            pip3 install flask 
+            pip3 install flask
+            pip3 install flask_mysql
+            export DB_HOST="${MySqlDatabase.Endpoint.Address}"
+            cd /home/ec2-user 
+            mkdir templates && cd templates
             wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/index.html 
             wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/add-update.html
             wget -p https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/delete.html
+            cd /home/ec2-user
             wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/app.py
-            python3 app.py  
+            python3 app.py
   WebServerTG:
     Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
     Properties:
-      Port: 80 
+      Port: 80
       Protocol: HTTP
       TargetType: instance
-      VpcId: !GetAtt WebServerSecurityGroup.VpcId 
+      VpcId: !GetAtt WebServerSecurityGroup.VpcId
   ApplicationLoadBalancer:
     Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
     Properties:
@@ -64,17 +73,17 @@ Resources:
       SecurityGroups:
         - !GetAtt ALBSecurityGroup.GroupId
       Subnets:
-        - subnet-6128c607 
-        - subnet-58ab5f79 
-        - subnet-5e5f6260 
-        - subnet-7bf14836 
+        - subnet-6128c607
+        - subnet-58ab5f79
+        - subnet-5e5f6260
+        - subnet-7bf14836
         - subnet-5a51ba05
         - subnet-e72888e9
-      Type: application 
+      Type: application
   ALBListener:
     Type: "AWS::ElasticLoadBalancingV2::Listener"
     Properties:
-      DefaultActions: 
+      DefaultActions:
         - TargetGroupArn: !Ref WebServerTG
           Type: forward
       LoadBalancerArn: !Ref ApplicationLoadBalancer
@@ -84,33 +93,36 @@ Resources:
     Type: "AWS::AutoScaling::AutoScalingGroup"
     Properties:
       AvailabilityZones:
-        - !GetAZs "" 
+        - !GetAZs ""
       DesiredCapacity: 2
       HealthCheckGracePeriod: 90
       HealthCheckType: ELB
       LaunchTemplate:
-        LaunchTemplateId: !Ref WebServerLT 
+        LaunchTemplateId: !Ref WebServerLT
         Version: !GetAtt WebServerLT.LatestVersionNumber
       MaxSize: 3
       MinSize: 1
       TargetGroupARNs:
-        - !Ref WebServerTG 
+        - !Ref WebServerTG
   MyRDS:
     Type: "AWS::RDS::DBInstance"
     Properties:
-      DBClusterIdentifier: Database-1
+      AllocatedStorage: 20
+      StorageType: gp2
+      DBInstanceIdentifier: last-last
       DBInstanceClass: db.t2.micro #required
+      DBName: phonebook
       Engine: MySQL
-      EngineVersion: 8.0.19
-      MasterUserPassword: 'Admin123'
+      EngineVersion: 8.0.17
+      MasterUserPassword: Admin12345
       MasterUsername: admin
       MultiAZ: True
       Port: 3306
       PubliclyAccessible: True
-    
-Outputs: 
-   WebsiteURL:
-      Description: Phonebook Application Website URL
-      Value: !Sub
-        - http://${ALBaddress}
-        - ALBaddress: !GetAtt ApplicationLoadBalancer.DNSName 
+
+Outputs:
+  WebsiteURL:
+    Description: Phonebook Application Website URL
+    Value: !Sub
+      - http://${ALBaddress}
+      - ALBaddress: !GetAtt ApplicationLoadBalancer.DNSName 
