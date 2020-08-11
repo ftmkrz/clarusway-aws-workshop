@@ -6,7 +6,7 @@ Resources:
   LoadBalancerSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      VpcId: vpc-e618229c
+      VpcId: vpc-46003a3c
       GroupDescription: Enable HTTP for ALB
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -17,7 +17,7 @@ Resources:
   InstanceSecurityGroup:
     Type: AWS::EC2::SecurityGroup
     Properties:
-      VpcId: vpc-e618229c
+      VpcId: vpc-46003a3c
       GroupDescription: Enable HTTP, SSH 
       SecurityGroupIngress:
         - IpProtocol: tcp
@@ -28,21 +28,20 @@ Resources:
           FromPort: 22
           ToPort: 22
           CidrIp: 0.0.0.0/0
-ApplicationLoadBalancer : 
-      Type : AWS::ElasticLoadBalancingV2::LoadBalancer
-      Properties : 
-        IpAddressType: ipv4
-        Scheme: internet-facing
-        SecurityGroups:
+  ApplicationLoadBalancer : 
+    Type : AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties : 
+      IpAddressType: ipv4
+      Scheme: internet-facing
+      SecurityGroups:
         - !Ref LoadBalancerSecurityGroup
-        Subnets:
-          - subnet-58ab5f79
-          - subnet-5e5f6260
-          - subnet-7bf14836
-          - subnet-5a51ba05
-          - subnet-e72888e9 
-          
-        Type: application
+      Subnets:
+        - subnet-58ab5f79
+        - subnet-5e5f6260
+        - subnet-7bf14836
+        - subnet-5a51ba05
+        - subnet-e72888e9 
+      Type: application
       
   ALBListener : 
     Type : AWS::ElasticLoadBalancingV2::Listener
@@ -65,25 +64,25 @@ ApplicationLoadBalancer :
       TargetType: instance
       UnhealthyThresholdCount : 3
       VpcId : vpc-46003a3c
-AutoScalingGroup:
-      Type: AWS::AutoScaling::AutoScalingGroup
-      Properties:
-        TargetGroupARNs: 
-          - !Ref ALBTargetGroup
-        LaunchTemplate:
-          LaunchTemplateId: !Ref MyLaunchTemplate
-          Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
-        MaxSize: 3
-        MinSize: 1
-        DesiredCapacity: 2
-        HealthCheckGracePeriod: 300
-        HealthCheckType: ELB
-        AvailabilityZones:
-          !GetAZs ""
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      TargetGroupARNs: 
+        - !Ref ALBTargetGroup
+      LaunchTemplate:
+        LaunchTemplateId: !Ref MyLaunchTemplate
+        Version: !GetAtt MyLaunchTemplate.LatestVersionNumber
+      MaxSize: 3
+      MinSize: 1
+      DesiredCapacity: 2
+      HealthCheckGracePeriod: 300
+      HealthCheckType: ELB
+      AvailabilityZones:
+        !GetAZs ""
 
-      UpdatePolicy:
-        AutoScalingReplacingUpdate:
-          WillReplace: True
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: True
   
   MyLaunchTemplate:
     Type: AWS::EC2::LaunchTemplate
@@ -91,7 +90,7 @@ AutoScalingGroup:
       LaunchTemplateData:
         InstanceType: t2.micro
         ImageId: ami-02354e95b39ca8dec
-        KeyName: betul
+        KeyName: cherry
         SecurityGroupIds: 
           - !Ref InstanceSecurityGroup 
         TagSpecifications:
@@ -110,11 +109,11 @@ AutoScalingGroup:
               export DB_HOST="${MySqlDatabase.Endpoint.Address}"
               cd /home/ec2-user
               mkdir templates && cd templates
-              wget https://raw.githubusercontent.com/betulbeyazoglu/aws-workshop/master/Projects/004-phonebook-web-application/templates/add-update.html             
-              wget https://raw.githubusercontent.com/betulbeyazoglu/aws-workshop/master/Projects/004-phonebook-web-application/templates/delete.html             
-              wget https://raw.githubusercontent.com/betulbeyazoglu/aws-workshop/master/Projects/004-phonebook-web-application/templates/index.html
+              wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/add-update.html             
+              wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/delete.html
+              wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/templates/index.html
               cd /home/ec2-user
-              wget https://raw.githubusercontent.com/betulbeyazoglu/aws-workshop/master/Projects/004-phonebook-web-application/app.py             
+              wget https://raw.githubusercontent.com/ftmkrz/clarusway-aws-workshop/master/004-phonebook-web-application/app.py             
               python3 app.py
 
   MySqlDatabase:
@@ -131,7 +130,7 @@ AutoScalingGroup:
       StorageType: gp2
       AllocatedStorage: 20
       DeletionProtection: false
-      MasterUserPassword: 12345
+      MasterUserPassword: admin12345
       MasterUsername: admin
       Port: 3306
       MonitoringInterval: 0
