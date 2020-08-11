@@ -1,17 +1,15 @@
 from flask import Flask, render_template, url_for, request
 from flaskext.mysql import MySQL
+#from flask_mysqldb import MySQL
+import os
 
 app = Flask(__name__)
 
-db_endpoint = open('/home/ec2-user/dbserver.endpoint', 'r', encoding='UTF-8')
-
-app.config['MYSQL_DATABASE_HOST'] = db_endpoint.readline().strip()
+app.config['MYSQL_DATABASE_HOST'] = os.getenv("DB_HOST", 'last-test.cmo1zcgk7qya.us-east-1.rds.amazonaws.com')
 app.config['MYSQL_DATABASE_USER'] = 'admin'
 app.config['MYSQL_DATABASE_PASSWORD'] = 'Admin12345'
 app.config['MYSQL_DATABASE_DB'] = 'phonebook'
 app.config['MYSQL_DATABASE_PORT'] = 3306
-
-db_endpoint.close()
 
 mysql = MySQL()
 mysql.init_app(app)
@@ -19,167 +17,131 @@ connection = mysql.connect()
 connection.autocommit(True)
 cursor = connection.cursor()
 
-def init_phonebook_db():
-    drop_table = 'DROP TABLE IF EXISTS phonebook.phonebook;'
-    phonebook_table = '''
-    CREATE TABLE phonebook(
-        id INTEGER NOT NULL AUTO_INCREMENT,
-        name varchar(50) NOT NULL,
-        number varchar(13),
-        PRIMARY KEY(id)
-    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-    '''
-    data = '''
-    INSERT INTO phonebook.phonebook(name, number)
-    VALUES
-    ('John Doe', '(333)666-4422'),
-    ('Jack Black', '(222)777-9955');
-    '''
-
-    cursor.execute(drop_table)
-    cursor.execute(phonebook_table)
-    cursor.execute(data)
-
-def find_persons(keyword):
-    query=f""" 
-    SELECT * From phonebook WHERE name like '%{keyword.strip().lower()}%';
+def find_number(keyword):
+    query = f"""
+    SELECT * FROM persons WHERE name like '%{keyword}%';
     """
     cursor.execute(query)
     result = cursor.fetchall()
-    persons = [{'id':row[0], 'name':row[1], 'number':row[2]} for row in result]
+    persons= [{"name":row[1], "number":row[2]} for row in result]
+   
+    if not any(persons):
+        persons = [{"name":'Not found.', "number":'Not Found.'}]
     return persons
 
-def insert_person(name, number):
+def add_number(name, number):
     query = f"""
-    SELECT * FROM phonebook WHERE name like '{name.strip().lower()}';
+    SELECT * FROM persons WHERE name like '{name}';
     """
     cursor.execute(query)
-    row = cursor.fetchone()
-    if row is not None:
-        return f'Person with name {row[1].title()} already exits.'
-    insert = f"""
-    INSERT INTO phonebook (name, number)
-    VALUES ('{name.strip().lower()}', '{number}');
-    """
-    cursor.execute(insert)
     result = cursor.fetchall()
-    return f'Person {name.strip().title()} added to Phonebook successfully'
-def update_person(name, number):
+    response = 'Error occurred..'
+    if name == " " or number == " ":
+        response = 'person or number can not be emtpy!!'
+    elif not any(result):
+        insert = f"""
+        INSERT INTO persons(name,number) 
+        VALUES ('{name}', '{number}');
+        """
+        cursor.execute(insert)
+        connection.commit()
+        response = f'{name} successfully added to phonebook'
+    else:
+        response = f'{name} already exits.'
+    return response
+def update(name, number):
     query = f"""
-    SELECT * FROM phonebook WHERE name like '{name.strip().lower()}';
+    SELECT * FROM persons WHERE name like '{name}';
     """
     cursor.execute(query)
-    row = cursor.fetchone()
-    if row is None:
-        return f'Person with name {name.strip().title()} does not exits.'
-    update = f"""
-    UPDATE phonebook
-    SET name='{row[1]}', number = '{number}'
-    WHERE id= {row[0]};
-    """
-    cursor.execute(update)
-    return f'Phone record of {name.strip().title()} is updated successfully '
-def delete_person(name):
-    query = f"""
-    SELECT * FROM phonebook WHERE name like '{name.strip().lower()}';
+    result = cursor.fetchall()
+    if result:
+        query=f""" 
+        UPDATE persons SET number='{number}' where name like '{name}';
+        """
+        cursor.execute(query)
+        connection.commit()
+        return f"Phone number for {name} successfully updated with {number}"
+    else:
+        return f"There isn't any contact with name {name}"
+
+def delete(name):
+    query=f"""
+    SELECT * FROM persons WHERE name='{name}';
     """
     cursor.execute(query)
-    row = cursor.fetchone()
-    if row is None:
-        return f'Person with name {name.strip().title()} does not exist, no need to delete.'
-    delete = f"""
-    DELETE FROM phonebook
-    WHERE id= {row[0]};
-    """
-    cursor.execute(delete)
-    return f'Phone record of {name.strip().title()} is deleted from the phonebook successfully.'
+    result=cursor.fetchall()
+    if result:
+        delete=f"""
+        DELETE FROM persons
+        WHERE name like '{name}';
+        """
+        cursor.execute(delete)
+        connection.commit()
+        response=f"{name} successfully deleted from phonebook"
+        return response
+    else:
+        response=f"{name} doesn't exist in the phonebook"
+    return response
 
 @app.route('/', methods=['GET', 'POST'])
-def find_records():
-    if request.method == 'POST':
-        keyword = request.form['username']
-        persons = find_persons(keyword)
-        return render_template('index.html', persons=persons, keyword=keyword, show_result=True, developer_name='Fatma')
+def index():
+    if request.method=='POST':
+        name=request.form['username'].strip()
+        persons=find_number(name)
+        return render_template("index.html", developer_name="Fatma", persons=persons, show_result=True, keyword=name )
     else:
-        return render_template('index.html', persons=persons, keyword=keyword, show_result=False,
-developer_name='Fatma')  
+        return render_template("index.html", developer_name="Fatma", show_result=False)
 
-@app.route('/add', methods=['GET', 'POST'])
-def add_record():
-    if request.method == 'POST':
-        name=request.form['username']
-        if name is None or name.strip() == '':
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Name can not be empty.', show_result=False, action_name='save', developer_name='Fatma')
-        elif name.isdecimal():
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Name can not be number.', show_result=False, action_name='save', developer_name='Fatma')
-        phone_number=request.form['phonenumber']
-        if phone_number is None or phone_number.strip() == '':
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Phone number can not be empty.', show_result=False, action_name='save', developer_name='Fatma')
-        elif not phone_number.isdecimal():
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Phone number should be in numeric format.', show_result=False, action_name='save', developer_name='Fatma')
-
-
-@app.route('/update', methods=['GET', 'POST'])
-def update_record():
-    if request.method == 'POST':
-        name = request.form['username']
-        if name is None or name.strip() == "":
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Name can not be empty', show_result=False, action_name='update', developer_name='Fatma')
-        phone_number = request.form['phonenumber']
-        if phone_number is None or phone_number.strip() == "":
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Phone number can not be empty', show_result=False, action_name='update', developer_name='Fatma')
-        elif not phone_number.isdecimal():
-            return render_template('add-update.html', not_valid=True, message='Invalid input: Phone number should be in numeric format', show_result=False, action_name='update', developer_name='Fatma')
-        result = update_person(name, phone_number)
-        return render_template('add-update.html', show_result=True, result=result, not_valid=False, action_name='update', developer_name='Fatma')
+@app.route('/add', methods=['GET','POST'])
+def add():
+    if request.method=='POST':
+        name=request.form['username'].title().strip()
+        number=request.form['phonenumber']
+        if (name.replace(" ", "")).isalpha() and number.isdigit():
+            result=add_number(name, number)
+            return render_template("add-update.html", developer_name='Fatma', action_name="add phonebook", result=result, show_result=True)
+        elif name is None or name.strip()=="":
+            return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", not_valid=True, message="Name can not be empty")    
+        elif name.isdigit():
+            return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", not_valid=True, message="Name of person should be text")    
+        elif not (name.replace(" ", "")).isalpha():
+            return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", not_valid=True, message="Name of person should be text")    
+        elif number==" ":
+            return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", not_valid=True, message="Number can not be empty")    
+        elif not number.isdigit():
+            return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", not_valid=True, message="Phone number should be in numeric format")       
     else:
-        return render_template('add-update.html', show_result=False, not_valid=False, action_name='update', developer_name='Fatma')
-@app.route('/delete', methods=['GET', 'POST'])
-def delete_record():
-    if request.method == 'POST':
-        name = request.form['username']
-        if name is None or name.strip() == "":
-            return render_template('delete.html', not_valid=True, message='Invalid input: Name can not be empty', show_result=False, developer_name='Fatma')
-        result = delete_person(name)
-        return render_template('delete.html', show_result=True, result=result, not_valid=False, developer_name='Fatma')
+        return render_template("add-update.html", developer_name="Fatma", action_name="add phonebook", show_result=False)  
+@app.route('/update', methods=['GET','POST'])  
+def update_number():
+    if request.method=='POST':
+        name=request.form['username'].title()
+        number=request.form['phonenumber']
+        if (name.replace(" ", "")).isalpha() and number.isdigit():
+            result=update(name, number)
+            return render_template("add-update.html", developer_name='Fatma', action_name="update phonebook", result=result, show_result=True)
+        elif name==" ":
+            return render_template("add-update.html", developer_name="Fatma", action_name="update phonebook", not_valid=True, message="Name can not be empty")    
+        elif number==" ":
+            return render_template("add-update.html", developer_name="Fatma", action_name="update phonebook", not_valid=True, message="Number can not be empty")    
+        elif not number.isdigit():
+            return render_template("add-update.html", developer_name="Fatma", action_name="update phonebook", not_valid=True, message="Phone number should be in numeric format")       
     else:
-        return render_template('delete.html', show_result=False, not_valid=False, developer_name='Fatma')
-
-
-
+        return render_template("add-update.html", developer_name="Fatma", action_name="update phonebook", show_result=False)  
+        
+@app.route('/delete', methods=['GET','POST']) 
+def delete_contact():
+    if request.method=='POST':
+        name=request.form['username'].title().strip()
+        if name=="" or name is None:
+            return render_template("delete.html", developer_name="Fatma", not_valid=True, message="Name can not be empty")    
+        result=delete(name)
+        return render_template("delete.html", developer_name="Fatma", show_result=True, result=result)
+    else:
+        return render_template("delete.html", developer_name="Fatma", show_result=False)  
 
 if __name__=='__main__':
-    init_phonebook_db()
+    # init_pb_db()
     app.run(host='0.0.0.0', port=80)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
-
-
-
-
-
-
-
-
-
-
-
+    # app.run(debug=True)
