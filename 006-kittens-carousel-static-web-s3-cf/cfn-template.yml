@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This is for kittens..
+Parameters:
+  IdHostedZoneName:
+    Description: Z09574363NXONUG9MFL8A
+    Type: AWS::Route53::HostedZone::Id 
+  NameHostedZone:
+    Description: kittens.fatmakiraz.me
+    Type: AWS::Route53::HostedZone::Id
+Resources:
+MyCertificate:
+  Type: "AWS::CertificateManager::Certificate"
+  Properties:
+    #CertificateAuthorityArn: String
+    #CertificateTransparencyLoggingPreference: String
+    DomainName: fatmakiraz.me #required
+    ValidationMethod: DNS
+Resources:
+  # cloudfrontdistribution:
+  #   Type: AWS::CloudFront::Distribution
+  #   Properties:
+  #     DistributionConfig:
+  #       CacheBehaviors:
+  #         AllowedMethods: 
+  #           - String
+  #       CachedMethods: 
+  #           - String
+  #       Compress: Boolean
+  #       DefaultTTL: Double
+  #     Tags:
+  #       - Key: string-value
+  #         Value: string-value
+  LogicalID:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: PublicRead
+      BucketName: kittens.fatmakiraz.me
+      ObjectLockEnabled: True
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: False
+        BlockPublicPolicy: False
+        IgnorePublicAcls: False
+        RestrictPublicBuckets: False
+      WebsiteConfiguration:
+        IndexDocument: index.html
+
+  # LogicalID:
+  #   Type: "AWS::Route53::RecordSet"
+  #   Properties:
+  #     AliasTarget:
+  #       AliasTarget
+  #     Comment: String
+  #     Failover: String
+  #     GeoLocation:
+  #       GeoLocation
+  #     HealthCheckId: String
+  #     HostedZoneId: String
+  #     HostedZoneName: String
+  #     MultiValueAnswer: Boolean
+  #     Name: String #required
+  #     Region: String
+  #     ResourceRecords:
+  #       - String
+  #     SetIdentifier: String
+  #     TTL: String
+  #     Type: String #required
+  #     Weight: Integer
+
+  
+
+  
