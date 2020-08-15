@@ -8,35 +8,82 @@ Parameters:
   NameHostedZone:
     Description: kittens.fatmakiraz.me
     Type: AWS::Route53::HostedZone::Id
-Resources:
-MyCertificate:
-  Type: "AWS::CertificateManager::Certificate"
-  Properties:
-    #CertificateAuthorityArn: String
-    #CertificateTransparencyLoggingPreference: String
+  MyCertificate:
+    Type: "AWS::CertificateManager::Certificate"
+    CertificateAuthorityArn: String
     DomainName: fatmakiraz.me #required
-    ValidationMethod: DNS
 Resources:
-  # cloudfrontdistribution:
+# MyCertificate:
+#   Type: "AWS::CertificateManager::Certificate"
+#   Properties:
+#     CertificateAuthorityArn: String
+#     CertificateTransparencyLoggingPreference: DISABLED
+#     DomainName: fatmakiraz.me #required
+#     ValidationMethod: DNS
+
+  # MyCloudFront:
   #   Type: AWS::CloudFront::Distribution
   #   Properties:
   #     DistributionConfig:
+  #       Origins:
+  #         - DomainName: !GetAtt
+  #           - MyBucket
+  #           - DomainName
   #       CacheBehaviors:
   #         AllowedMethods: 
-  #           - String
-  #       CachedMethods: 
-  #           - String
-  #       Compress: Boolean
-  #       DefaultTTL: Double
-  #     Tags:
-  #       - Key: string-value
-  #         Value: string-value
-  LogicalID:
+  #           - GET
+        #     - HEAD
+        # Compress: Boolean
+        # Supported HTTP Versions: HTTP/2 
+        # Viewer Protocol Policy:
+        #   - HTTP
+        #   - HTTPS 
+        # DefaultTTL: Double
+        # Cookie Logging: Off
+        #SSL Certificate: !Get MyCertificate
+  MyCloudFront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: 'true'
+        IPV6Enabled: true
+        DefaultRootObject: index.html
+        Origins:
+          -
+            Id: Origin01 # arbitrary identifier
+            S3OriginConfig: {}
+            DomainName: fatmakiraz.me
+
+        ViewerCertificate:
+           AcmCertificateArn: 'my-cer-id'
+           SslSupportMethod: sni-only
+        DefaultCacheBehavior:
+          TargetOriginId: Origin01
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          MinTTL: 0
+          DefaultTTL: 3600
+          MaxTTL: 31536000
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          ForwardedValues:
+            QueryString: 'false'
+            Headers:
+              - Origin
+              - CloudFront-Viewer-Country
+            Cookies:
+              Forward: none
+
+  MyBucket:
     Type: "AWS::S3::Bucket"
     Properties:
       AccessControl: PublicRead
       BucketName: kittens.fatmakiraz.me
-      ObjectLockEnabled: True
+      ObjectLockEnabled: True 
       PublicAccessBlockConfiguration:
         BlockPublicAcls: False
         BlockPublicPolicy: False
@@ -44,6 +91,24 @@ Resources:
         RestrictPublicBuckets: False
       WebsiteConfiguration:
         IndexDocument: index.html
+        ErrorDocument: error.html
+  SampleBucketPolicy: 
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref BucketName
+    PolicyDocument: 
+      Statement: 
+          Action: 
+            - "s3:GetObject"
+          Effect: "Allow"
+          Resource: "arn:aws:s3:::example.com/*"
+                - "/*"
+          Principal: "*" 
+          Sid: "PublicReadGetObject"        
+  
+ 
+  
+         
 
   # LogicalID:
   #   Type: "AWS::Route53::RecordSet"
@@ -66,6 +131,14 @@ Resources:
   #     TTL: String
   #     Type: String #required
   #     Weight: Integer
+
+Outputs:
+  WebsiteURL:
+    Value: !GetAtt [MYBucket, WebsiteURL]
+    Description: URL for website hosted on S3
+
+
+  
 
   
 

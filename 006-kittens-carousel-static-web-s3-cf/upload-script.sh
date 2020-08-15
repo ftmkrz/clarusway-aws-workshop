@@ -1,0 +1,1 @@
+aws s3 cp "C:\users\my first backup.bak" s3://my-first-backup-bucket/
