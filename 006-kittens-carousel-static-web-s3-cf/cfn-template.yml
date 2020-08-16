@@ -65,25 +65,19 @@ Resources:
     Properties:
       AccessControl: PublicRead
       BucketName: kittens.fatmakiraz.me
-      ObjectLockEnabled: True 
-      PublicAccessBlockConfiguration:
-        BlockPublicAcls: False
-        BlockPublicPolicy: False
-        IgnorePublicAcls: False
-        RestrictPublicBuckets: False
       WebsiteConfiguration:
         IndexDocument: index.html
         ErrorDocument: error.html
   SampleBucketPolicy: 
     Type: AWS::S3::BucketPolicy
     Properties: 
-      Bucket: !Ref BucketName
+      Bucket: !Ref MyBucket
     PolicyDocument: 
       Statement: 
           Action: 
             - "s3:GetObject"
           Effect: "Allow"
-          Resource: "arn:aws:s3:::kittens.fatmakiraz.me/*"
+          Resource: !Sub 'arn:aws:s3:::${BucketName}/*'
           Principal: "*" 
           Sid: "PublicReadGetObject"        
   
