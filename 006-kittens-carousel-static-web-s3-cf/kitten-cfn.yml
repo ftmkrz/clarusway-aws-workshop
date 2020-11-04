@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: |
+  This is for kittens..
+Parameters:
+  DomainName:
+    Description: DNS name of existing Route 53 hosted zone
+    Type: string 
+    Default: fatmakiraz.me 
+  WebDomainName:
+    Description: Domain Name of website
+    Type: string 
+    Default: kittens.fatmakiraz.me
+  ACMCertificateIdentifier:
+    Description: The AWS Certificate Manager (ACM) certificate identifier.
+    Type: String
+    Default: 'arn:aws:acm:us-east-1:744261147378:certificate/d8f8e089-3224-425a-86ad-94fc0a536b2e'
+Resources:
+  MyBucket:
+    Type: "AWS::S3::Bucket"
+    Properties:
+      AccessControl: PublicRead
+      BucketName: !Ref WebDomainName
+      WebsiteConfiguration:
+        IndexDocument: index.html
+  MyBucketPolicy: 
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+    Bucket: !Ref MyBucket
+    PolicyDocument:
+      Version: '2012-10-17'  
+          Statement:
+          - Effect: Allow
+            Action: s3:GetObject
+            Principal: '*'
+            Resource: !Sub 'arn:aws:s3:::${MyBucket}/*
+  CloudFrontOriginAccessIdentity:
+    Type: AWS::CloudFront::CloudFrontOriginAccessIdentity
+    Properties:
+      CloudFrontOriginAccessIdentityConfig:
+        Comment: !Ref MyBucket
+  MyCloudfront:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Aliases: 
+          - !Ref WebDomainName
+        CustomErrorResponses:
+          - ErrorCachingMinTTL: 60
+            ErrorCode: 403 # not found
+            ResponseCode: 404
+            ResponsePagePath: '/index.html'
+        DefaultCacheBehavior:
+          AllowedMethods:
+            - GET
+            - HEAD
+          CachedMethods:
+            - GET
+            - HEAD
+          Compress: true
+          DefaultTTL: 3600
+          ForwardedValues:
+            Cookies:
+              Forward: none
+            QueryString: true
+          MaxTTL: 86400
+          MinTTL: 60
+          SmoothStreaming: false
+          TargetOriginId: !Sub 'S3-${AWS::StackName}-root' 
+          ViewerProtocolPolicy: 'redirect-to-https'   
+        DefaultRootObject: 'index.html'
+        Enabled: true
+        HttpVersion: http2
+        IPV6Enabled: true
+        Origins:
+          - CustomOriginConfig:
+              HTTPPort: 80
+              HTTPSPort: 443
+              OriginKeepaliveTimeout: 5
+              OriginProtocolPolicy: 'http-only' 
+              OriginReadTimeout: 60
+              OriginSSLProtocols:
+                - TLSv1
+                - TLSv1.1
+                - TLSv1.2
+            DomainName: !GetAtt 'MyBucket.DomainName'   
+            Id: !Sub 'S3-${AWS::StackName}-root'
+        PriceClass: PriceClass_All
+        ViewerCertificate:
+          AcmCertificateArn: !Ref ACMCertificateIdentifier    
+          MinimumProtocolVersion: TLSv1.1_2016
+          SslSupportMethod: sni-only
+  Route53:
+    Type: AWS::Route53::RecordSetGroup
+    DependsOn: CloudFrontDistribution
+    Properties:
+      HostedZoneName: !Sub '${DomainName}.'  
+      RecordSets:
+      - Name: !Ref 'WebDomainName'
+        Type: A
+        AliasTarget:
+          DNSName: !GetAtt MyCloudfront.DomainName
+          EvaluateTargetHealth: false
+          HostedZoneId: Z2FDTNDATAQYW2
+Outputs:
+
+  BucketName:
+    Value: !Ref MyBucket
+    Description: URL of s3 bucket
+  CloudfrontEndpoint:
+    Value: !GetAtt [MyCloudfront, DomainName]
+    Description: Endpoint for Cloudfront distribution
+  FullDomain:
+    Value: !Ref WebDomainName
+    Description: Full DomainName
+
+  
+  
+
+
+  
+
+  
+
+  
